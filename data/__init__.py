@@ -1,6 +1,6 @@
-from .voc0712 import VOCDetection, VOCAnnotationTransform, VOC_CLASSES, VOC_ROOT
+from .voc0712 import VOCDetection, VOCAnnotationTransform, VOC_CLASSES, VOC_ROOT, ImgDataset
 
-from .coco import COCODetection, COCOAnnotationTransform, COCO_CLASSES, COCO_ROOT, get_label_map
+# from .coco import COCODetection, COCOAnnotationTransform, COCO_CLASSES, COCO_ROOT, get_label_map
 from .config import *
 import torch
 import cv2
@@ -21,10 +21,16 @@ def detection_collate(batch):
     """
     targets = []
     imgs = []
-    for sample in batch:
+    text = []
+    text_length = []
+    rois = []
+    for i, sample in enumerate(batch):
         imgs.append(sample[0])
         targets.append(torch.FloatTensor(sample[1]))
-    return torch.stack(imgs, 0), targets
+        text.extend(sample[4])
+        text_length.append(sample[5])
+        rois.append(torch.FloatTensor([i]+sample[6]))
+    return torch.stack(imgs, 0), torch.stack(targets), torch.stack(text, 0), torch.stack(text_length, 1).squeeze(), torch.stack(rois, 0)
 
 
 def base_transform(image, size, mean):

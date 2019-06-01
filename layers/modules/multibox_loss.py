@@ -71,7 +71,7 @@ class MultiBoxLoss(nn.Module):
             labels = targets[idx][:, -1].data
             defaults = priors.data
             match(self.threshold, truths, defaults, self.variance, labels,
-                  loc_t, conf_t, idx)
+                  loc_t, conf_t, idx)                                   # 返回的loc_t ，是每个先验框对truth的回归系数
         if self.use_gpu:
             loc_t = loc_t.cuda()
             conf_t = conf_t.cuda()
@@ -84,18 +84,18 @@ class MultiBoxLoss(nn.Module):
 
         # Localization Loss (Smooth L1)
         # Shape: [batch,num_priors,4]
-        pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
+        pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)          # 进行扩充，https://pytorch.org/docs/0.3.1/tensors.html?highlight=expand#torch.Tensor.expand
         loc_p = loc_data[pos_idx].view(-1, 4)
         loc_t = loc_t[pos_idx].view(-1, 4)
-        loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
+        loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)     # 应该是舍弃掉0背景类的操作，只对目标类求位置的回归
 
         # Compute max conf across batch for hard negative mining
         batch_conf = conf_data.view(-1, self.num_classes)
-        loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))
+        loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))         # 应该是计算为背景的概率
 
-        # Hard Negative Mining
-        loss_c[pos] = 0  # filter out pos boxes for now
+        # Hard Negative Mining/对负样本进行抽样/选取误差较大的top-k作为训练的负样本/正负样本的比例为：1：3
         loss_c = loss_c.view(num, -1)
+        loss_c[pos] = 0  # filter out pos boxes for now
         _, loss_idx = loss_c.sort(1, descending=True)
         _, idx_rank = loss_idx.sort(1)
         num_pos = pos.long().sum(1, keepdim=True)
@@ -111,7 +111,10 @@ class MultiBoxLoss(nn.Module):
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
 
-        N = num_pos.data.sum()
+        # N = num_pos.data.sum()
+        N = num_pos.data.sum().double()             # 先验框的正样本数量和
+        loss_l = loss_l.double()
+        loss_c = loss_c.double()
         loss_l /= N
         loss_c /= N
         return loss_l, loss_c

@@ -12,6 +12,8 @@ import torch
 import torch.utils.data as data
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
@@ -25,7 +27,7 @@ VOC_CLASSES = (  # always index 0
     'sheep', 'sofa', 'train', 'tvmonitor')
 
 # note: if you used our download scripts, this should be right
-VOC_ROOT = osp.join(HOME, "data/VOCdevkit/")
+VOC_ROOT = osp.join(HOME, "/media/chenjun/data/1_deeplearning/faster-rcnn.pytorch/data/VOCdevkit2007/")
 
 
 class VOCAnnotationTransform(object):
@@ -95,7 +97,8 @@ class VOCDetection(data.Dataset):
     """
 
     def __init__(self, root,
-                 image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
+                #  image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
+                 image_sets=[('2007', 'trainval')],
                  transform=None, target_transform=VOCAnnotationTransform(),
                  dataset_name='VOC0712'):
         self.root = root
@@ -182,3 +185,64 @@ class VOCDetection(data.Dataset):
             tensorized version of img, squeezed
         '''
         return torch.Tensor(self.pull_image(index)).unsqueeze_(0)
+
+
+class ImgDataset(data.Dataset):
+    def __init__(self, root=None, csv_root=None, transform=None, target_transform=None):
+        self.root = root
+        with open(csv_root) as f:
+            self.data = f.readlines()
+        self.transform = transform
+        self.target_transform = target_transform
+        self.name = 'ocr'
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        per_label = self.data[idx].rstrip().split('\t')
+        imgpath = osp.join(self.root, per_label[0])
+        img = cv2.imread(imgpath)
+        height, width, channels = img.shape
+
+        # 高度和宽度的归一化
+        temp = [int(x) for x in per_label[2:6]]
+        target1 = [[temp[0] / width, temp[1]/height, temp[2]/width, temp[3]/height, 0]]           # 归一化,target的类别是从0开始编码的
+
+        if self.transform is not None:
+            target = np.array(target1)
+            img, boxes, labels = self.transform(img, target[:, :4], target[:, 4])
+            # to rgb
+            img = img[:, :, (2, 1, 0)]
+            # img = img.transpose(2, 0, 1)
+            target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
+
+        # 为ocr识别做的转换
+        text = per_label[1].lstrip()
+        if self.target_transform:
+            data = self.target_transform(text)
+        text = data[0]
+        text_length = data[1]
+
+        # 求rois
+        rois = target1[0][:4]                   # rois是按图片的宽度和高度归一化之后的
+
+        return torch.from_numpy(img).permute(2, 0, 1), target, height, width, text, text_length, rois
+
+
+    def pull_image(self, idx):
+        '''Returns the original image object at index in PIL form
+
+        Note: not using self.__getitem__(), as any transformations passed in
+        could mess up this functionality.
+
+        Argument:
+            index (int): index of img to show
+        Return:
+            PIL img
+        '''
+        per_label = self.data[idx].rstrip().split('\t')
+        imgpath = osp.join(self.root, per_label[0])
+        img = cv2.imread(imgpath, cv2.IMREAD_COLOR)
+        return img
+

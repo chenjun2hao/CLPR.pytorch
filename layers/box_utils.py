@@ -87,8 +87,8 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
     """
     # jaccard index
     overlaps = jaccard(
-        truths,
-        point_form(priors)
+        truths,                             # truths的格式是：xmin，xmax，ymin，ymax，归一化处理的
+        point_form(priors)                  # 返回xmin，xmax，ymin，ymax的形式/就是求真实的box和每个priors的重合率/ priors原有的格式为 centerx，centery，w，h
     )
     # (Bipartite Matching)
     # [1,num_objects] best prior for each ground truth
@@ -101,7 +101,7 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
     best_prior_overlap.squeeze_(1)
     best_truth_overlap.index_fill_(0, best_prior_idx, 2)  # ensure best prior
     # TODO refactor: index  best_prior_idx with long tensor
-    # ensure every gt matches with its prior of max overlap
+    # ensure every gt matches with its prior of max overlap             # matching strategy策略
     for j in range(best_prior_idx.size(0)):
         best_truth_idx[best_prior_idx[j]] = j
     matches = truths[best_truth_idx]          # Shape: [num_priors,4]

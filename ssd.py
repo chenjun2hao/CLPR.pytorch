@@ -47,6 +47,50 @@ class SSD(nn.Module):
             self.softmax = nn.Softmax(dim=-1)
             self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
 
+        # 测试不同的主干网络
+        nc = 3
+        leakyRelu = False
+        ks = [3, 3, 3, 3, 3, 3, 3]
+        ps = [1, 1, 1, 1, 1, 1, 1]
+        ss = [1, 1, 1, 1, 1, 1, 1]
+        nm = [64, 128, 256, 256, 512, 512, 512]
+
+        cnn = nn.Sequential()
+
+        def convRelu(i, batchNormalization=False):
+            nIn = nc if i == 0 else nm[i - 1]
+            nOut = nm[i]
+            cnn.add_module('conv{0}'.format(i),
+                           nn.Conv2d(nIn, nOut, ks[i], ss[i], ps[i]))
+            if batchNormalization:
+                cnn.add_module('batchnorm{0}'.format(i), nn.BatchNorm2d(nOut))
+            if leakyRelu:
+                cnn.add_module('relu{0}'.format(i),
+                               nn.LeakyReLU(0.2, inplace=True))
+            else:
+                cnn.add_module('relu{0}'.format(i), nn.ReLU(True))
+
+        convRelu(0)
+        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))  # 64x16x50
+        convRelu(1)
+        cnn.add_module('pooling{0}'.format(1), nn.MaxPool2d(2, 2))  # 128x8x25
+        convRelu(2, True)
+        convRelu(3)
+        # cnn.add_module('pooling{0}'.format(2),
+        #                nn.MaxPool2d((2, 2), (2, 1), (0, 1)))  # 256x4x26
+        cnn.add_module('pooling{0}'.format(2), nn.MaxPool2d(2, 2))  # 128x8x25
+
+        convRelu(4, True)
+        convRelu(5)
+        # cnn.add_module('pooling{0}'.format(3),
+        #                nn.MaxPool2d((2, 2), (2, 1), (0, 1)))  # 512x2x27
+        cnn.add_module('pooling{0}'.format(3), nn.MaxPool2d(2, 2))  # 128x8x25
+
+        # convRelu(6, True)  # 512x1x26
+        # cnn.add_module('pooling{0}'.format(4),
+        #                nn.MaxPool2d((2, 2), (2, 1), (0, 1)))  # 512x2x27
+        self.cnn = cnn
+
     def forward(self, x):
         """Applies network layers and ops on input image(s) x.
 
@@ -77,10 +121,14 @@ class SSD(nn.Module):
         s = self.L2Norm(x)
         sources.append(s)
 
+        # ocr feature
+        ocrFeature = s
+
         # apply vgg up to fc7
         for k in range(23, len(self.vgg)):
             x = self.vgg[k](x)
         sources.append(x)
+
 
         # apply extra layers and cache source layer outputs
         for k, v in enumerate(self.extras):
@@ -102,11 +150,13 @@ class SSD(nn.Module):
                              self.num_classes)),                # conf preds
                 self.priors.type(type(x.data))                  # default boxes
             )
+            output = (output, ocrFeature)
         else:
             output = (
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
-                self.priors
+                self.priors,
+                ocrFeature                                      # ocr crop feature
             )
         return output
 

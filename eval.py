@@ -44,7 +44,7 @@ parser.add_argument('--confidence_threshold', default=0.01, type=float,
                     help='Detection confidence threshold')
 parser.add_argument('--top_k', default=5, type=int,
                     help='Further restrict the number of predictions to parse')
-parser.add_argument('--cuda', default=True, type=str2bool,
+parser.add_argument('--cuda', default=False, type=str2bool,
                     help='Use cuda to train model')
 parser.add_argument('--voc_root', default=VOC_ROOT,
                     help='Location of VOC root directory')
@@ -390,7 +390,7 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
             dets = detections[0, j, :]
             mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t()
             dets = torch.masked_select(dets, mask).view(-1, 5)
-            if dets.dim() == 0:
+            if dets.size(0) == 0:
                 continue
             boxes = dets[:, 1:]
             boxes[:, 0] *= w

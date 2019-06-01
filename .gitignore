@@ -119,6 +119,7 @@ test_data_aug.py
 
 # pycharm
 .idea/
+.vscode/
 
 # temp checkout soln
 data/datasets/
@@ -126,3 +127,4 @@ data/ssd_dataloader.py
 
 # pylint
 .pylintrc
+weights/
