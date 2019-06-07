@@ -14,13 +14,18 @@
 
 
 ## 依赖安装
-1. 安装cupy，实现ocr_roi_pooling的时候，使用cupy进行了GPU加速。**注意：** 最开始的时候也用numpy实现了ocr_roi_pooling的功能，但是训练的时候速度太慢了。训练了一天还没有收敛。所以深度学习GPU加速那是必须的，特别是训练的时候。cupy的具体安装可以参考[cupy](https://github.com/cupy/cupy)，例如：
+1. 克隆项目
+```python
+git clone https://github.com/chenjun2hao/CLPR.pytorch.git
+```
+
+2. 安装cupy，实现ocr_roi_pooling的时候，使用cupy进行了GPU加速。**注意：** 最开始的时候也用numpy实现了ocr_roi_pooling的功能，但是训练的时候速度太慢了。训练了一天还没有收敛。所以深度学习GPU加速那是必须的，特别是训练的时候。cupy的具体安装可以参考[cupy](https://github.com/cupy/cupy)，例如：
 ```bash
 (Binary Package for CUDA 9.0)
 $ pip install cupy-cuda90
 ```
 
-2. 其他
+3. 其他
 ```bash
 python 3.6
 pytorch 0.4.0
@@ -61,3 +66,4 @@ some examples:
 - [CCPD: Chinese City Parking Dataset](https://github.com/detectRecog/CCPD)
 - [Chainer](https://github.com/Hakuyume/chainer-ssd)
 - [ssd.pytorch](https://github.com/amdegroot/ssd.pytorch)
+- [chenjun2hao/CLPR.pytorch](https://github.com/chenjun2hao/CLPR.pytorch)

@@ -10,13 +10,18 @@ And i use [CCPD: Chinese City Parking Dataset](https://github.com/detectRecog/CC
 
 
 ## Installation requirement
-1. install [cupy](https://github.com/cupy/cupy), for example:
+1. clone the project
+```python
+git clone https://github.com/chenjun2hao/CLPR.pytorch.git
+```
+
+2. install [cupy](https://github.com/cupy/cupy), for example:
 ```bash
 (Binary Package for CUDA 9.0)
 $ pip install cupy-cuda90
 ```
 
-2. Other dependencies
+3. Other dependencies
 ```bash
 python 3.6
 pytorch 0.4.0
