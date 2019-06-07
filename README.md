@@ -24,8 +24,8 @@ For testing, download the pretrained model from [Baidu disk](https://pan.baidu.c
 python test.py
 ```
 here are some examples:  
-![](./output/0.jpg) | ![](./output/1.jpg)
-![](./output/2.jpg) | ![](./output/3.jpg)
+![] (./output/0.jpg) | ![](./output/1.jpg)
+![] (./output/2.jpg) | ![](./output/3.jpg)
 
 
 ## Train
