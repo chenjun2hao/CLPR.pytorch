@@ -166,29 +166,8 @@ class OcrLoss(nn.Module):
             return ctcloss
         else:
             #### 第一种方法
-            # base_feat, rois = input
-            # rois = Variable(rois)
-            # #
-            # pooled_height = 2
-            # maxratio = (rois[:, 3] - rois[:, 1]) / (rois[:, 4] - rois[:, 2])
-            # maxratio = maxratio.max().item()
-            # pooled_width = math.ceil(pooled_height * maxratio)
-            # pooling = _RoIPooling(pooled_height, pooled_width, 1.0, 1.0)  # height_spatial, width_spatial
-            # #
-            # b, c, h, w = base_feat.size()
-            # rois[:, [1, 3]] *= w
-            # rois[:, [2, 4]] *= h
-            # temp = rois.numpy().tolist()
-            # # rois = torch.FloatTensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]] )
-            # rois = torch.tensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]])
-            # pooled_feat = pooling(base_feat, rois.view(-1, 5))
-            # # pooled_feat = self.RCNN_ocr_roi_pooling(base_feat, rois.view(-1, 5))                # 用numpy写的ocr pooling
-            #
-            # # 利用rnn进行序列学习
-            # b, c, h, w = pooled_feat.size()
-            # rnn_input = pooled_feat.view(b, -1, w)
-            # rnn_input = rnn_input.permute(2, 0, 1)
-            # preds = self.rnn(rnn_input)
+
+
             #### 第二种方法
             base_feat, rois = input
 
