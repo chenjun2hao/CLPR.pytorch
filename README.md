@@ -1,4 +1,8 @@
 # CLPR:End to End Chinese License Plate Recognition
+
+[中文版readme](https://github.com/chenjun2hao/CLPR.pytorch/blob/CLPR/Creadme.md)
+---
+
 A [PyTorch](http://pytorch.org/) implementation of End to End Chinese License Plate Recognition, the whole project is mainly modified from [SSD](https://github.com/amdegroot/ssd.pytorch), which is a Single-stage object detector. And I mainly adopted the idea of this article([A Novel Integrated Framework for Learning both Text Detection and Recognition](https://arxiv.org/abs/1811.08611v1)) and designed an OCR ROI pooling operation, so that detection, classification and text recognition can be integrated into one net for training, and using VGG as the backbone network.
 
 ### Dataset
