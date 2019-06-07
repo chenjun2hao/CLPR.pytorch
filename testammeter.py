@@ -74,7 +74,7 @@ def test_voc():
     num_classes = 1 + 1 # +1 background
     net = build_ssd('train', 300, num_classes) # initialize SSD
     ocrnet = OcrLoss()
-    load_name = './weights/ssd300_OCR_9000.pth'
+    load_name = './weights/ssd300_OCR_12000.pth'
     checkpoint = torch.load(load_name)
     net.load_state_dict(checkpoint['model'])
     ocrnet.load_state_dict(checkpoint['ocr'])

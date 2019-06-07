@@ -24,24 +24,26 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
 train_set = parser.add_mutually_exclusive_group()
+
+parser.add_argument('--alphabets', default='0123456789ABCDEFGHJKLMNOPQRSTUVWXYZ云京冀吉学宁川新晋桂沪津浙渝湘琼甘皖粤苏蒙藏警豫贵赣辽鄂闽陕青鲁黑', type=str)
+parser.add_argument('--root', default=r"/media/chenjun/profile/6_data/CCPD2019/*/*.jpg")            
+parser.add_argument('--batch_size', default=16, type=int, help='Batch size for training')
+parser.add_argument('--save_iter', default=6000, type=int)
+parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float, help='initial learning rate')
+parser.add_argument('--resume', default='./weights/ssd300_OCR_24000.pth', type=str, help='Checkpoint state_dict file to resume training from')
+
 parser.add_argument('--dataset', default='ocr', choices=['VOC', 'COCO'],
                     type=str, help='VOC or COCO')
 parser.add_argument('--dataset_root', default=VOC_ROOT,
                     help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
                     help='Pretrained base model')
-parser.add_argument('--batch_size', default=4, type=int,
-                    help='Batch size for training')
-parser.add_argument('--resume', default=None, type=str,
-                    help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=2, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--cuda', default=True, type=str2bool,
                     help='Use CUDA to train model')
-parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
-                    help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float,
                     help='Momentum value for optim')
 parser.add_argument('--weight_decay', default=5e-4, type=float,
@@ -91,10 +93,10 @@ def train():
     # ocr dataset
     else:
         cfg = ocr
-        converter = strLabelConverter('0123456789.')
-        dataset = ImgDataset(
-            root='/home/chenjun/1_chenjun/mech_demo2/dataset/imgs/image',
-            csv_root='/home/chenjun/1_chenjun/mech_demo2/dataset/imgs/train_list.txt',
+        converter = strLabelConverter(args.alphabets)
+        dataset = LPDataset(
+            root=args.root,
+            csv_root=None,
             transform=SSDAugmentation(cfg['min_dim'], MEANS),
             target_transform=converter.encode
         )
@@ -106,12 +108,15 @@ def train():
 
     ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
     net = ssd_net
-    ctccriterion = OcrLoss()
+    ctccriterion = OcrLoss(args.alphabets)
 
 
     if args.resume:
         print('Resuming training, loading {}...'.format(args.resume))
-        ssd_net.load_weights(args.resume)
+        # ssd_net.load_weights(args.resume)
+        checkpoint = torch.load(args.resume)
+        net.load_state_dict(checkpoint['model'])
+        ctccriterion.load_state_dict(checkpoint['ocr'])
     else:
         vgg_weights = torch.load(args.save_folder + args.basenet)
         print('Loading base network...')
@@ -130,8 +135,8 @@ def train():
 
     optimizer = torch.optim.SGD([
         {'params': net.parameters()},
-        {'params': ctccriterion.parameters(), 'lr': 1e-4}
-    ], 1e-4, momentum=0.9)
+        {'params': ctccriterion.parameters(), 'lr': args.lr}
+    ], args.lr, momentum=0.9)
 
     #optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum,
     #                      weight_decay=args.weight_decay)
@@ -208,8 +213,8 @@ def train():
         # forward
         t0 = time.time()
         out = net(images)
-        ctcloss = ctccriterion(out[-1], text, text_length, rois)
-        loss_l, loss_c = criterion(out[:3], targets)
+        ctcloss = ctccriterion(out[-1], text, text_length, rois)            # ctcloss
+        loss_l, loss_c = criterion(out[:3], targets)                        # ssdloss
 
         loss = loss_l + loss_c + ctcloss.double().cuda()
         loss.backward()
@@ -230,7 +235,7 @@ def train():
                             iter_plot, epoch_plot, 'append')
 
         # save model
-        if iteration != 0 and iteration % 3000 == 0:
+        if iteration != 0 and iteration % args.save_iter == 0:
             print('Saving state, iter:', iteration)
             state = {'model': ssd_net.state_dict(),
                      'ocr': ctccriterion.state_dict()}

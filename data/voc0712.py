@@ -14,6 +14,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import glob
+from torch import randperm
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
@@ -246,3 +248,76 @@ class ImgDataset(data.Dataset):
         img = cv2.imread(imgpath, cv2.IMREAD_COLOR)
         return img
 
+
+class LPDataset(data.Dataset):
+    def __init__(self, root=None, csv_root=None, transform=None, target_transform=None):
+        self.root = root
+        temp = glob.glob(root)
+        selected = randperm(len(temp), device=torch.device('cpu'))[:30000].tolist()             # 选30000张
+        self.data = []
+        self.data.extend(temp[x] for x in selected)
+        self.transform = transform
+        self.target_transform = target_transform
+        self.name = 'ocr'
+        self.provinces = ["皖", "沪", "津", "渝", "冀", "晋", "蒙", "辽", "吉", "黑", "苏", "浙", "京", "闽", "赣", "鲁", "豫", "鄂", "湘", "粤", "桂", "琼", "川", "贵", "云", "藏", "陕", "甘", "青", "宁", "新", "警", "学", "O"]
+        self.alphabets = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
+                        'X', 'Y', 'Z', 'O']
+        self.ads = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                    'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'O']
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        per_name = self.data[idx]
+        img = cv2.imread(per_name)
+        height, width, channels = img.shape
+
+        # 得到车牌区域
+        per_name = per_name.split('/')[-1]
+        data = per_name.split('-')[2].split('_')
+        coor = []
+        for t in data:
+            coor.extend(t.split('&'))
+        temp = [int(x) for x in coor]
+        target1 = [[temp[0] / width, temp[1]/height, temp[2]/width, temp[3]/height, 0]]           # 归一化,target的类别是从0开始编码的
+
+        # 数据增强
+        if self.transform is not None:
+            target = np.array(target1)
+            img, boxes, labels = self.transform(img, target[:, :4], target[:, 4])
+            # to rgb
+            img = img[:, :, (2, 1, 0)]
+            # img = img.transpose(2, 0, 1)
+            target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
+
+        # ocr的字符转换
+        label = per_name.split('-')[4]
+        label = [int(x) for x in  label.split('_')]
+        temp = [self.provinces[label[0]], self.alphabets[label[1]]] + [self.ads[x] for x in label[2:]]
+        text = ''.join(temp)                    # 转换成字符串
+        if self.target_transform:
+            data = self.target_transform(text)
+        text = data[0]
+        text_length = data[1]
+
+        # 求rois
+        rois = target1[0][:4]                   # rois是按图片的宽度和高度归一化之后的
+
+        return torch.from_numpy(img).permute(2, 0, 1), target, height, width, text, text_length, rois
+
+
+    def pull_image(self, idx):
+        '''Returns the original image object at index in PIL form
+
+        Note: not using self.__getitem__(), as any transformations passed in
+        could mess up this functionality.
+
+        Argument:
+            index (int): index of img to show
+        Return:
+            PIL img
+        '''
+        per_name = self.data[idx]
+        img = cv2.imread(per_name, cv2.IMREAD_COLOR)
+        return img
