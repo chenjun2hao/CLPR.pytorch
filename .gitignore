@@ -128,3 +128,4 @@ data/ssd_dataloader.py
 # pylint
 .pylintrc
 weights/
+output/
