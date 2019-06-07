@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from utils.class_ocr import ocr_roi_pooling
 import cupy as cp
-from PIL import Image, ImageDraw, ImageFont
-import cv2
 
 
 class strLabelConverter(object):
