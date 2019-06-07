@@ -33,8 +33,21 @@ pytorch 0.4.0
 python test.py
 ```
 some examples:
-![] (./output/0.jpg) | ![](./output/1.jpg)
-![] (./output/2.jpg) | ![](./output/3.jpg)
+<table>
+    <tr>
+        <td ><center><img src="./output/0.jpg" >图1 </center></td>
+        <td ><center><img src="./output/1.jpg"  >图2 </center></td>
+    </tr>
+    <tr>
+        <td ><center><img src="./output/4.jpg" >图3 </center></td>
+        <td ><center><img src="./output/3.jpg"  >图4 </center></td>
+    </tr>
+    <tr>
+        <td ><center><img src="./output/5.jpg" >图5 </center></td>
+        <td ><center><img src="./output/6.jpg"  >图6 </center></td>
+    </tr>
+</table>
+
 
 ## 训练
 **Coming later**  整理好了再开源
