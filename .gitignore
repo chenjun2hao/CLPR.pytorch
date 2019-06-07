@@ -129,3 +129,5 @@ data/ssd_dataloader.py
 .pylintrc
 weights/
 output/
+ssd300_120000/
+eval/
