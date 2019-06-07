@@ -1,3 +1,4 @@
+
 import torch.nn as nn
 from warpctc_pytorch import CTCLoss         # ctcloss
 from model.roi_pooling.modules.roi_pool import _RoIPooling          # ocr roipooling
@@ -8,7 +9,10 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
+from utils.class_ocr import ocr_roi_pooling
+import cupy as cp
+from PIL import Image, ImageDraw, ImageFont
+import cv2
 
 
 class strLabelConverter(object):
@@ -16,7 +20,7 @@ class strLabelConverter(object):
 
     NOTE:
         Insert `blank` to the alphabet for CTC.
-
+s
     Args:
         alphabet (str): set of the possible characters.
         ignore_case (bool, default=True): whether or not to ignore all of the case.
@@ -115,12 +119,11 @@ class BidirectionalLSTM(nn.Module):
 
 
 class OcrLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, alphabets=None, nh=256):
         super(OcrLoss, self).__init__()
 
         # rnn初始化，隐藏节点256
-        nh = 256
-        nclass = len('0123456789.') + 1
+        nclass = len(alphabets) + 1
         self.rnn = nn.Sequential(
             BidirectionalLSTM(1024, nh, nh),
             BidirectionalLSTM(nh, nh, nclass))
@@ -162,27 +165,51 @@ class OcrLoss(nn.Module):
 
             return ctcloss
         else:
+            #### 第一种方法
+            # base_feat, rois = input
+            # rois = Variable(rois)
+            # #
+            # pooled_height = 2
+            # maxratio = (rois[:, 3] - rois[:, 1]) / (rois[:, 4] - rois[:, 2])
+            # maxratio = maxratio.max().item()
+            # pooled_width = math.ceil(pooled_height * maxratio)
+            # pooling = _RoIPooling(pooled_height, pooled_width, 1.0, 1.0)  # height_spatial, width_spatial
+            # #
+            # b, c, h, w = base_feat.size()
+            # rois[:, [1, 3]] *= w
+            # rois[:, [2, 4]] *= h
+            # temp = rois.numpy().tolist()
+            # # rois = torch.FloatTensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]] )
+            # rois = torch.tensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]])
+            # pooled_feat = pooling(base_feat, rois.view(-1, 5))
+            # # pooled_feat = self.RCNN_ocr_roi_pooling(base_feat, rois.view(-1, 5))                # 用numpy写的ocr pooling
+            #
+            # # 利用rnn进行序列学习
+            # b, c, h, w = pooled_feat.size()
+            # rnn_input = pooled_feat.view(b, -1, w)
+            # rnn_input = rnn_input.permute(2, 0, 1)
+            # preds = self.rnn(rnn_input)
+            #### 第二种方法
             base_feat, rois = input
-            rois = Variable(rois)
 
             pooled_height = 2
             maxratio = (rois[:, 3] - rois[:, 1]) / (rois[:, 4] - rois[:, 2])
             maxratio = maxratio.max().item()
             pooled_width = math.ceil(pooled_height * maxratio)
-            pooling = _RoIPooling(pooled_height, pooled_width, 1.0, 1.0)  # height_spatial, width_spatial
+            pooling = ocr_roi_pooling(pooled_height, pooled_width, 1.0, 1.0)  # height_spatial, width_spatial
 
+            # rois传入的是除以宽度和高度之后的比例
             b, c, h, w = base_feat.size()
             rois[:, [1, 3]] *= w
             rois[:, [2, 4]] *= h
-            temp = rois.numpy().tolist()
-            # rois = torch.FloatTensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]] )
-            rois = torch.tensor([0] + [temp[0][1], temp[0][2], temp[0][3], temp[0][4]])
-            pooled_feat = pooling(base_feat, rois.view(-1, 5))
-            # pooled_feat = self.RCNN_ocr_roi_pooling(base_feat, rois.view(-1, 5))                # 用numpy写的ocr pooling
 
-            # 利用rnn进行序列学习
-            b, c, h, w = pooled_feat.size()
-            rnn_input = pooled_feat.view(b, -1, w)
+            base_feat = cp.array(base_feat.cpu().detach().numpy(), dtype=np.float32)
+            rois = cp.array(rois.cpu().numpy(), dtype=np.float32)
+
+            pooled_feat2 = pooling(base_feat, rois)
+            # # 利用rnn进行序列学习
+            b, c, h, w = pooled_feat2.size()
+            rnn_input = pooled_feat2.view(b, -1, w)
             rnn_input = rnn_input.permute(2, 0, 1)
             preds = self.rnn(rnn_input)
 
